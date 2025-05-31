@@ -5,14 +5,13 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.8",
     "@react-three/fiber": "^9.1.2",
     "@rive-app/react-canvas": "^4.21.1",
-    "next": "15.3.2",
+    "next": "^15.3.2",
     "openai": "^5.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

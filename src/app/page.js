@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { Model } from "../components/model";
 import Caption from "../components/Caption";
 
@@ -8,10 +8,6 @@ export default function Home() {
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -53,61 +49,8 @@ export default function Home() {
     }
   };
 
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    audioChunksRef.current = [];
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
-    };
-
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunksRef.current, {
-        type: "audio/webm",
-      });
-      const formData = new FormData();
-      formData.append("file", audioBlob, "audio.webm");
-
-      const sttRes = await fetch("/api/stt", {
-        method: "POST",
-        body: formData,
-      });
-
-      const sttData = await sttRes.json();
-      if (sttData.text) {
-        setInputText(sttData.text);
-      }
-      setIsListening(false);
-    };
-
-    mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start();
-    setIsListening(true);
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isListening) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
   return (
     <>
-      {/* <div
-        style={{
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          backgroundColor: "#000",
-        }}
-      >
-        <Model isSpeaking={isSpeaking} />
-      </div> */}
-
       <div
         style={{
           flexGrow: 1,
@@ -121,8 +64,7 @@ export default function Home() {
         <Model isSpeaking={isSpeaking} />
         {isSpeaking && (
           <Caption text={messages[messages.length - 1]?.content || ""} />
-        )}{" "}
-        {/* ✅ Show caption */}
+        )}
       </div>
 
       <div
@@ -143,21 +85,9 @@ export default function Home() {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Type or record your message..."
+          placeholder="Type your message..."
           style={{ flexGrow: 1, padding: "12px", borderRadius: "6px" }}
         />
-        <button
-          onClick={isListening ? stopRecording : startRecording}
-          style={{
-            backgroundColor: isListening ? "#ff4444" : "#4CAF50",
-            color: "#fff",
-            border: "none",
-            padding: "12px 18px",
-            borderRadius: "6px",
-          }}
-        >
-          {isListening ? "Stop" : "Record"}
-        </button>
         <button
           onClick={handleSend}
           disabled={!inputText.trim()}
