@@ -1,18 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
+import { useEffect } from "react";
+import {
+  useRive,
+  useStateMachineInput,
+  Layout,
+  Fit,
+  Alignment,
+} from "@rive-app/react-canvas";
 
-const RIVE_FILE = '/chatbot.riv';
-const BLINK_ANIMATION_NAME = 'blink';
-const TALK_ANIMATION_NAME = 'talk';
+const RIVE_FILE = "/chatbot.riv";
+const STATE_MACHINE_NAME = "Lip Sync";
+const INPUT_NAME = "isTalking";
 
 export function Model({ isSpeaking }) {
-  const [activeAnimation, setActiveAnimation] = useState(BLINK_ANIMATION_NAME);
-
   const { rive, RiveComponent } = useRive({
     src: RIVE_FILE,
-    animations: activeAnimation,
+    stateMachines: STATE_MACHINE_NAME,
     autoplay: true,
     layout: new Layout({
       fit: Fit.Cover,
@@ -20,13 +24,17 @@ export function Model({ isSpeaking }) {
     }),
   });
 
-  useEffect(() => {
-    if (isSpeaking && activeAnimation !== TALK_ANIMATION_NAME) {
-      setActiveAnimation(TALK_ANIMATION_NAME);
-    } else if (!isSpeaking && activeAnimation !== BLINK_ANIMATION_NAME) {
-      setActiveAnimation(BLINK_ANIMATION_NAME);
-    }
-  }, [isSpeaking, activeAnimation]);
+  const isTalkingInput = useStateMachineInput(
+    rive,
+    STATE_MACHINE_NAME,
+    INPUT_NAME
+  );
 
-  return <RiveComponent style={{ width: '100%', height: '100%' }} />;
+  useEffect(() => {
+    if (isTalkingInput) {
+      isTalkingInput.value = isSpeaking;
+    }
+  }, [isSpeaking, isTalkingInput]);
+
+  return <RiveComponent style={{ width: "100%", height: "100%" }} />;
 }
