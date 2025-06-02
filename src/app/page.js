@@ -9,83 +9,110 @@ export default function Home() {
   const [messages, setMessages] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // State for loader
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
+  const handleSend = async (messageContent = inputText) => {
+    // If messageContent is 'next', set inputText to 'next' for display in input field
+    // before sending, but ensure the actual sent content is 'next'
+    if (messageContent === "next" && inputText !== "next") {
+      setInputText("next");
+    }
 
-    const newUserMessage = { role: "user", content: inputText };
+    if (!messageContent.trim()) return;
+
+    const newUserMessage = { role: "user", content: messageContent };
     const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
-    setInputText("");
+    setInputText(""); // Clear input field immediately
+    setIsLoading(true); // Show loader
 
-    const chatResponse = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: updatedMessages }),
-    }).then((res) => res.json());
-
-    if (chatResponse && chatResponse.content) {
-      const assistantMessage = {
-        role: "assistant",
-        content: chatResponse.content,
-      };
-      setMessages([...updatedMessages, assistantMessage]);
-
-      const ttsResponse = await fetch("/api/tts", {
+    try {
+      const chatResponse = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: chatResponse.content }),
-      });
+        body: JSON.stringify({ messages: updatedMessages }),
+      }).then((res) => res.json());
 
-      const audioBlob = await ttsResponse.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      if (chatResponse && chatResponse.content) {
+        const assistantMessage = {
+          role: "assistant",
+          content: chatResponse.content,
+        };
+        setMessages([...updatedMessages, assistantMessage]);
 
-      setIsSpeaking(true);
-      audio.play();
+        const ttsResponse = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: chatResponse.content }),
+        });
 
-      audio.onended = () => {
-        setIsSpeaking(false);
-      };
+        const audioBlob = await ttsResponse.blob();
+        setIsLoading(false); // <--- HIDE LOADER HERE: AFTER AUDIO BLOB IS RECEIVED
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+
+        setIsSpeaking(true);
+        audio.play();
+
+        audio.onended = () => {
+          setIsSpeaking(false);
+        };
+      } else {
+        setIsLoading(false); // Hide loader if no chat response content
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setIsLoading(false); // Hide loader on error
     }
   };
 
   const handleStart = async () => {
     setHasStarted(true);
+    setIsLoading(true); // Show loader
 
     const initialMessage = { role: "user", content: "start" };
     const updatedMessages = [initialMessage];
     setMessages(updatedMessages);
 
-    const chatResponse = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: updatedMessages }),
-    }).then((res) => res.json());
-
-    if (chatResponse && chatResponse.content) {
-      const assistantMessage = {
-        role: "assistant",
-        content: chatResponse.content,
-      };
-      setMessages([...updatedMessages, assistantMessage]);
-
-      const ttsResponse = await fetch("/api/tts", {
+    try {
+      const chatResponse = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: chatResponse.content }),
-      });
+        body: JSON.stringify({ messages: updatedMessages }),
+      }).then((res) => res.json());
 
-      const audioBlob = await ttsResponse.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      if (chatResponse && chatResponse.content) {
+        const assistantMessage = {
+          role: "assistant",
+          content: chatResponse.content,
+        };
+        setMessages([...updatedMessages, assistantMessage]);
 
-      setIsSpeaking(true);
-      audio.play();
+        const ttsResponse = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: chatResponse.content }),
+        });
 
-      audio.onended = () => {
-        setIsSpeaking(false);
-      };
+        const audioBlob = await ttsResponse.blob();
+        setIsLoading(false); // <--- HIDE LOADER HERE: AFTER AUDIO BLOB IS RECEIVED
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+
+        setIsSpeaking(true);
+        audio.play();
+
+        audio.onended = () => {
+          setIsSpeaking(false);
+        };
+      } else {
+        setIsLoading(false); // Hide loader if no chat response content
+      }
+    } catch (error) {
+      console.error("Error starting lesson:", error);
+      setIsLoading(false); // Hide loader on error
     }
   };
 
@@ -132,6 +159,7 @@ export default function Home() {
               fontSize: "16px",
               borderRadius: "8px",
             }}
+            disabled={isLoading} // Disable button while loading
           >
             Start Lesson
           </button>
@@ -151,6 +179,26 @@ export default function Home() {
             gap: "10px",
           }}
         >
+          {isLoading && ( // Loader positioned here
+            <div
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 10px)", // 10px above the input container
+                left: "15px",
+                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                color: "#fff",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                zIndex: 999, // Ensure it's above the input but below fixed elements
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <div className="loader-small" /> {/* Smaller loader */}
+              <p style={{ margin: 0, fontSize: "14px" }}>Loading...</p>
+            </div>
+          )}
           <input
             type="text"
             value={inputText}
@@ -158,26 +206,25 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Type your message..."
             style={{ flexGrow: 1, padding: "12px", borderRadius: "6px" }}
+            disabled={isLoading} // Disable input while loading
           />
           <button
-            onClick={handleSend}
-            disabled={!inputText.trim()}
+            onClick={() => handleSend(inputText)} // Pass inputText directly
+            disabled={!inputText.trim() || isLoading} // Disable button while loading
             style={{
               backgroundColor: "#007bff",
               color: "#fff",
               border: "none",
               padding: "12px 18px",
               borderRadius: "6px",
-              opacity: !inputText.trim() ? 0.5 : 1,
+              opacity: !inputText.trim() || isLoading ? 0.5 : 1,
             }}
           >
             Send
           </button>
           <button
-            onClick={() => {
-              setInputText("next");
-              handleSend();
-            }}
+            onClick={() => handleSend("next")} // Directly call handleSend with "next"
+            disabled={isLoading} // Disable button while loading
             style={{
               backgroundColor: "#ffc107",
               color: "#000",
